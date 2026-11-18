@@ -3594,6 +3594,8 @@ const App = (() => {
     show('screen-game');
     SPRITES.init();
     World.init(el('stage'));
+    // COVERED FLOOR: a window docked over most of the stage slows the floor's redraws so the window stays smooth
+    if (World.setOcclusionProbe && typeof StationUI !== 'undefined' && StationUI.stageCovered) World.setOcclusionProbe(StationUI.stageCovered);
     World.spawn(agent);
     World.setOnClick(openWorldAgent);
     World.setOnArcade(() => { if (typeof StationUI !== 'undefined' && StationUI.openArcade) StationUI.openArcade(); });   // click a cabinet → BREACH PROTOCOL
