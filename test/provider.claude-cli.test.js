@@ -318,6 +318,14 @@ const result = (extra) => Object.assign({ type: 'result', subtype: 'success', is
     const cls = require('../sidecar/providers/errorClass.js').classifyApiError(err, {});
     A.eq(cls.reason || cls.kind || cls.class, 'auth', 'errorClass files it as auth (no ~105s retry ladder)');
   }
+  // K2. CLI 2.1.27x reports a dead OAuth token ONLY on the result line (api_error_status 401, no tagged assistant line):
+  // still a 401 sign-in failure, not `Claude Code error: …` → unknown → six retries (seen 2026-11-18).
+  {
+    const { p } = make({ lines: [init('none'), result({ is_error: true, subtype: 'success', api_error_status: 401, result: 'Failed to authenticate. API Error: 401 OAuth access token is invalid.' })] });
+    let err = null; try { await collect(p, { model: 'sonnet', messages: [{ role: 'user', content: 'x' }] }); } catch (e) { err = e; }
+    A.ok(err && err.status === 401 && /not signed in/.test(err.message), 'a result-line-only 401 is the same sign-in failure');
+    A.eq(require('../sidecar/providers/errorClass.js').classifyApiError(err, {}).reason, 'auth', 'and is filed as auth');
+  }
 
   // J. the CLI child never inherits station secrets, and its own auto-memory stays out of the turn.
   {

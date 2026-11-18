@@ -1892,11 +1892,37 @@ const World = (() => {
     }
     if (strainDraws % STRAIN_PROBE_DRAWS === 0) strainProbe = true;   // the next draw measures full detail again
   }
+  /* COVERED FLOOR (2026-11-18): a window docked over most of the stage (the RECRUITMENT BAY, SETTINGS…) sits on a scrim, so
+     the floor behind it is dimmed and mostly hidden — yet it was still drawn at the full/budget pace. On a slow machine
+     (measured: a 2015 Intel Iris, ~160 ms per floor draw at 2x DPR) that left the bay scrolling at ~7 fps with 140–360 ms
+     stalls, because the floor ate ~70% of the main thread. While the probe (StationUI.stageCovered) says the stage is
+     covered, the floor redraws at most every COVERED_PACE_MS; occlusionChanged() (StationUI.syncScrim: open / close /
+     minimize / restore) re-reads it at once and wakes the floor, so closing the window never waits out the slow pace.
+     Only the DRAW is paced — the simulation still advances in real time (simSlices), exactly like the other tiers. */
+  const COVERED_PACE_MS = 500, COVERED_STRAINED_PACE_MS = 1000, COVERED_RECHECK_MS = 250;   // strained: one draw a second behind the window
+  let occlusionProbe = null, coveredReadAt = -Infinity, coveredNow = false;
+  function setOcclusionProbe(fn) { occlusionProbe = typeof fn === 'function' ? fn : null; occlusionChanged(); }
+  function occlusionChanged() { coveredReadAt = -Infinity; paceWake(); }
+  function stageCovered(now) {
+    if (!occlusionProbe) return false;
+    if (now - coveredReadAt >= COVERED_RECHECK_MS) {
+      coveredReadAt = now;
+      try { coveredNow = !!occlusionProbe(); } catch (_) { coveredNow = false; }   // fail-open: a probe fault draws normally
+    }
+    return coveredNow;
+  }
+  // LITE GLASS: mirror the strained verdict onto <html>.sn-lite-glass (only on a change — no per-draw DOM write)
+  let liteGlassOn = false;
+  function syncLiteGlass() {
+    if (strained === liteGlassOn) return;
+    liteGlassOn = strained;
+    try { document.documentElement.classList.toggle('sn-lite-glass', liteGlassOn); } catch (_) {}
+  }
   // the still pace applies: the last verdict was still, no caller cap, no hand on the camera, and no known change is due yet
   function stillPaced(now) { return stillNow && !frameCapMs && now >= motionUntil && now < stillDue; }
   function paceMs(now) {
     const base = frameCapMs ? Math.max(frameCapMs, PACE_VISIBLE_MS) : now < motionUntil ? PACE_MOTION_MS : stillPaced(now) ? PACE_STILL_MS : PACE_VISIBLE_MS;
-    return Math.max(base, budgetMs());
+    return Math.max(base, budgetMs(), stageCovered(now) ? (strained ? COVERED_STRAINED_PACE_MS : COVERED_PACE_MS) : 0);
   }
   function cancelScheduled() {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -7078,6 +7104,7 @@ const World = (() => {
       if (cache === bakedBefore) {
         noteDrawCost(performance.now() - drawStart);   // FRAME BUDGET: what this draw really cost the main thread
         noteStrain(performance.now() - drawStart);     // STRAINED DETAIL: the same cost, raw (a probe is judged on its own draw)
+        syncLiteGlass();                               // LITE GLASS: a strained floor drops the panels' backdrop blur (titlebar.css)
       }
       if(reviewPerformance.enabled && reviewPerformance.samples.length<3600)reviewPerformance.samples.push({t:now,ms:performance.now()-reviewStart,parts:reviewParts});
       reviewParts=null;
@@ -12611,7 +12638,7 @@ const World = (() => {
        floor to the router. `station: false` = no floor loaded (nothing is known). */
     planStatus: () => Object.assign({ station: !!station, pending: !!(station && (geoDirty || !geo)),
       errors: (routingPlan && routingPlan.errors ? routingPlan.errors : []).filter(e => !e.warn), hash: routingPlan ? routingPlan.hash : null }, planPoster.state()),
-    loadStation, spawn, spawnAgent, despawnAgent, setSkin, relabel, setActivityFor, agentRunsLive, dropRun: dropRunFromPage, focusBody, lockBody, cameraMode, cameraState, restoreCamera, setFrameCap, yieldToUi, setOverlays, setCinecamIdle, setCinecamRest, setIdleRenderer, idleRendererOn: () => idleRenderer, setChatFocus, chatFocusPing, start, stop, setActivity, wakeIn, beginAwakening, playArrival, cancelArrival, setWakeProgress, igniteSpark, armKindle, kindleHold, camPushIn, camCreep, camPunch, camPullBack, awakenTurn, truthPulse, beginFlood, collapseFlood, endAwakening, releaseAwakening, awakeningHeld, say, focusAgent, getActivity: () => activity, getUse: () => (agent ? agent.usingProp : null), setOnClick, setOnArcade, setOnOutbox, setOnMissionBoard, setOnTrophyCase, setOnPluginTerminal, setOnDesk, setOnBayAssign, setOnIntakeFeed, setOnIntakeSample, refit, pauseBridge, resumeBridge, linkState, _dbgSeedRun, _dbgAgeRun, _dbgReconcile, _dbgSweep, _dbgSendTo, _dbgLinkState, _dbgDropBridge, _dbgCurveState, _dbgLoseCurveContext, _dbgLoseCanvases, _dbgCanvasLoss, _dbgKillStageContext, _dbgStageState, _dbgBeltLegibility, _dbgPropClientPoint, _dbgDeskClientPoint, _dbgSleep, _dbgUseProp, _dbgArrive, _dbgLeisure,
+    loadStation, spawn, spawnAgent, despawnAgent, setSkin, relabel, setActivityFor, agentRunsLive, dropRun: dropRunFromPage, focusBody, lockBody, cameraMode, cameraState, restoreCamera, setFrameCap, setOcclusionProbe, occlusionChanged, yieldToUi, setOverlays, setCinecamIdle, setCinecamRest, setIdleRenderer, idleRendererOn: () => idleRenderer, setChatFocus, chatFocusPing, start, stop, setActivity, wakeIn, beginAwakening, playArrival, cancelArrival, setWakeProgress, igniteSpark, armKindle, kindleHold, camPushIn, camCreep, camPunch, camPullBack, awakenTurn, truthPulse, beginFlood, collapseFlood, endAwakening, releaseAwakening, awakeningHeld, say, focusAgent, getActivity: () => activity, getUse: () => (agent ? agent.usingProp : null), setOnClick, setOnArcade, setOnOutbox, setOnMissionBoard, setOnTrophyCase, setOnPluginTerminal, setOnDesk, setOnBayAssign, setOnIntakeFeed, setOnIntakeSample, refit, pauseBridge, resumeBridge, linkState, _dbgSeedRun, _dbgAgeRun, _dbgReconcile, _dbgSweep, _dbgSendTo, _dbgLinkState, _dbgDropBridge, _dbgCurveState, _dbgLoseCurveContext, _dbgLoseCanvases, _dbgCanvasLoss, _dbgKillStageContext, _dbgStageState, _dbgBeltLegibility, _dbgPropClientPoint, _dbgDeskClientPoint, _dbgSleep, _dbgUseProp, _dbgArrive, _dbgLeisure,
     // AGENT GROWTH: XpStore pushes pre-computed Xp.compute() snapshots here; pulseLevelUp fires
     // the addressed body's gold ring. The colony headline is the top-bar STATION chip.
     setXp: (agentId, a) => {

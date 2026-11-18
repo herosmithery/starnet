@@ -10,13 +10,28 @@ crew/
   MONEY.md                  ← money opportunities + free/cheap model options
 ```
 
-## 1. Start StarNet (from source)
+## 1. Start StarNet (from source) — the free way
+
+One time, sign the `claude` command in to your Claude subscription (opens the browser):
 
 ```bash
-cd ~/Projects/starnet && npm ci --ignore-scripts && node sidecar/index.js
+claude auth login
 ```
 
-(`npm ci` is only needed once. The main README says the sidecar needs no install, but this checkout needs `ajv` from npm.)
+Then always start StarNet with the launcher:
+
+```bash
+~/Projects/starnet/crew/start-free.sh
+```
+
+Why the launcher: `~/.zshrc` exports a paid `ANTHROPIC_API_KEY`. A StarNet started straight from a terminal hands that
+key to Claude Code, so every agent turn is billed to the API account. The launcher removes it for StarNet only, so
+CLAUDE CODE runs on your subscription. (It also runs `npm ci` the first time; the main README says the sidecar
+needs no install, but this checkout needs `ajv` from npm.)
+
+Note: `~/.claude/settings.json` also points the `claude` command at OpenRouter with an OpenRouter key. StarNet
+ignores that file (it runs Claude Code with `--setting-sources ""`), but your own `claude` sessions in a terminal
+will still go through OpenRouter until you remove those two `env` entries.
 
 Open http://localhost:8787. (Or install the desktop build from the releases page in the main README.)
 
@@ -28,8 +43,8 @@ Pick one on the first-run brain screen, or later in **SETTINGS → PROVIDERS**:
 | --- | --- | --- |
 | **CLAUDE CODE** | already paid (your Claude plan) | Uses the `claude` CLI you're signed in to. No key stored in StarNet. Best quality. Watch your plan's usage limits. |
 | **GEMINI** (Google AI Studio key) | free tier | Flash models only on the free tier; limits are small and change — check AI Studio for your real numbers. Free-tier prompts may be used by Google to improve products. |
-| **OPENROUTER** `:free` models | free | 20 req/min; 50 req/day, or 1,000/day once you've bought $10 of credits once. |
-| **OLLAMA** (local) | free | `ollama pull qwen3:8b`. Slower, rougher on long tasks, needs ~10 GB of graphics memory. |
+| **OPENROUTER** `:free` models | free | **Recommended on this Mac.** `nvidia/nemotron-3-ultra-550b-a55b:free` — tested 2026-11-18: answers in ~2 s and makes correct tool calls. 20 req/min; 50 req/day, or 1,000/day once you've bought $10 of credits once. Free models come and go — if one errors, pick another `:free` model with tool support. |
+| **OLLAMA** (local) | free | Measured on this 2015 Intel MacBook: `qwen3:4b` runs ~3 words/s (about 4 min per answer) — too slow for agents here. Fine on Apple Silicon. `:cloud` models now need a paid Ollama plan. |
 
 Tip: run VOLT's daily scans on a free model, and switch to Claude Code for writing that matters (launch posts, listings).
 

@@ -43,6 +43,7 @@ const sandbox = {
 vm.createContext(sandbox);
 vm.runInContext('let frameCapMs = 0, lastDrawnAt = 0, running = true, raf = 0, camUserAt = 0; function frame() {}\n' + world.slice(from, to) +
   '\nthis.api = { paceMs, simSlices, easeK, scheduleFrame, paceWake, userActive, cameraMoved, camUser: () => camUserAt, noteDrawCost, budgetMs, resetBudget: () => { drawCostMs = 0; },' +
+  ' setOcclusionProbe, occlusionChanged, consts2: { COVERED_PACE_MS, COVERED_STRAINED_PACE_MS, COVERED_RECHECK_MS },' +
   ' noteStrain, strain: () => ({ strained, strainProbe, strainDraws }), strainConsts: { STRAIN_ENTER_MS, STRAIN_EXIT_MS, STRAIN_SETTLE_DRAWS, STRAIN_PROBE_DRAWS, STRAIN_EXIT_PROBES },' +
   ' set: o => { if ("cap" in o) frameCapMs = o.cap; if ("low" in o) paceLowRate = o.low; if ("drawn" in o) lastDrawnAt = o.drawn; if ("raf" in o) raf = o.raf; },' +
   ' timer: () => paceTimer, consts: { PACE_VISIBLE_MS, PACE_MOTION_MS, PACE_MOTION_HOLD_MS, SIM_SLICE_MS, SIM_CATCHUP_MAX_MS, BUDGET_SHARE, BUDGET_MIN_FPS } };', sandbox);
@@ -276,6 +277,28 @@ function floorSim() {
   const ttAt = stationui.indexOf('  function toggleTerm(');
   const tt = stationui.slice(ttAt, stationui.indexOf("    w.addEventListener('mousedown'", ttAt));
   A.ok(/World\.yieldToUi\(\)/.test(tt), 'opening a window asks the floor to stand aside');
+}
+
+// ---- COVERED FLOOR (2026-11-18): a window docked over the stage slows the floor's redraws ----------------------
+{
+  const C = W.consts2;
+  env.now = 50000; W.set({ cap: 0 }); W.resetBudget();
+  let covered = true;
+  W.setOcclusionProbe(() => covered);
+  A.ok(W.paceMs(env.now) >= C.COVERED_PACE_MS, 'a covered stage is drawn at most every COVERED_PACE_MS');
+  covered = false; W.occlusionChanged();
+  A.ok(W.paceMs(env.now) < C.COVERED_PACE_MS, 'occlusionChanged() re-reads the probe at once: an uncovered stage is back on the normal pace');
+  covered = true; env.now += 10;
+  A.ok(W.paceMs(env.now) < C.COVERED_PACE_MS, 'the probe is re-read at most every COVERED_RECHECK_MS (no per-vsync layout read)');
+  env.now += C.COVERED_RECHECK_MS;
+  A.ok(W.paceMs(env.now) >= C.COVERED_PACE_MS, '…and picks up the covering window after the recheck interval');
+  W.setOcclusionProbe(() => { throw new Error('probe fault'); });
+  A.ok(W.paceMs(env.now) < C.COVERED_PACE_MS, 'a faulting probe fails open (normal pace)');
+  W.setOcclusionProbe(null);
+  A.ok(W.paceMs(env.now) < C.COVERED_PACE_MS, 'no probe → normal pace');
+  A.ok(C.COVERED_STRAINED_PACE_MS > C.COVERED_PACE_MS, 'a strained floor behind a window draws even less often');
+  A.ok(/World\.occlusionChanged\(\)/.test(stationui.slice(stationui.indexOf('  function syncScrim('), stationui.indexOf('  function syncScrim(') + 1200)), 'syncScrim (open/close/minimize/restore) tells the floor to re-read its cover');
+  A.ok(/sn-lite-glass/.test(world) && /sn-lite-glass/.test(fs.readFileSync(path.join(root, 'frontend/css/titlebar.css'), 'utf8')), 'a strained floor drops the panels\' backdrop blur (LITE GLASS)');
 }
 
 A.report('render pacing (#69)');

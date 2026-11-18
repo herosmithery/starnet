@@ -936,6 +936,9 @@
           // a failed turn can still have been BILLED (an API-key sign-in pays for the tokens it used): report what the
           // CLI's result line says it cost before failing, so the ledger and the caps see it (sweep 2026-10-02)
           if (result.usage || isFinite(Number(billed.total_cost_usd))) yield t.usageChunk(billed);
+          // Newer CLIs (2.1.27x) report a lost sign-in only on the result line (api_error_status 401, "OAuth access
+          // token is invalid") with no tagged assistant line — file it as the same sign-in failure, not `unknown`.
+          if (!t.apiError && Number(result.api_error_status) === 401) t.apiError = 'authentication_failed';
           throw t.failureError(result.result, result.subtype);
         }
         if (!t.sawText && t.callIndex === 0 && typeof result.result === 'string') yield* emitSplit(splitter.push(result.result), []);

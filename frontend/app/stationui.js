@@ -867,6 +867,24 @@ const StationUI = typeof document === 'undefined' ? {} : (() => {
     if (any && !s) { s = mkEl('div', 'term-scrim'); s.id = 'term-scrim'; host.insertBefore(s, host.firstChild); }
     else if (any && s) { s.classList.remove('term-closing'); }
     else if (!any && s) { s.remove(); }
+    // the floor's COVERED pace re-reads stageCovered() now, so a closed/minimized window never waits out the slow pace
+    try { if (typeof World !== 'undefined' && World.occlusionChanged) World.occlusionChanged(); } catch (_) {}
+  }
+  // true while a visible (not minimized, not closing) window covers at least STAGE_COVER_SHARE of the stage canvas —
+  // World's COVERED FLOOR probe. Cheap: a rect per open window, read at most every 250 ms by the floor.
+  const STAGE_COVER_SHARE = 0.4;
+  function stageCovered() {
+    const st = document.getElementById('stage'); if (!st) return false;
+    const sr = st.getBoundingClientRect(), area = sr.width * sr.height;
+    if (!(area > 0)) return false;
+    for (const k of Object.keys(open)) {
+      const w = open[k];
+      if (minimized[k] || !w || w._closing || !w.isConnected) continue;
+      const r = w.getBoundingClientRect();
+      const ox = Math.min(r.right, sr.right) - Math.max(r.left, sr.left), oy = Math.min(r.bottom, sr.bottom) - Math.max(r.top, sr.top);
+      if (ox > 0 && oy > 0 && ox * oy >= area * STAGE_COVER_SHARE) return true;
+    }
+    return false;
   }
 
   /* ---------- MINIMIZE-TO-STRIP: window→bottom-bar chip lifecycle ----------
@@ -12955,7 +12973,7 @@ const StationUI = typeof document === 'undefined' ? {} : (() => {
   // GROWTH Tier 3: repaint the Settings AUTONOMY panel's EARNED badge if it is open (no-op otherwise — the paint fn
   // queries its own (possibly detached) host nodes, so a closed panel costs nothing). Called after a trust accept.
   const repaintAutonomy = () => { try { if (repaintAutonomyDial) repaintAutonomyDial(); } catch (_) {} };
-  return { init, enter, setRoster, leave, clearRunning, runningCount: () => runningAgents.size, isAgentRunning: (id) => agentLive(id), notify, warnIfStationLacksKey, settleNotifs, waitingNotifKeys, seenSession, storedWaits, settleStoredWait, flashSave, refreshSave: () => refreshSaveDurability(), offerPreservedSaves, openAgent, refreshCrew: () => crewTick(), openArcade, toggleTerm, openTerm, focusProvider, showTerm, showAgent, notifsMarkRead, notifsClear, badges, openDesk, closeTerm, rerender, invalidate, refreshBoard: refreshBoardLive, pokeQuests, setTheme, getTheme, setLook, lookNow, lookOptions, repaintAutonomy, initiativeLabel, refreshSystems, toggleFamily, familyOf, registerWindow, h, motionRestState, reseatToasts };
+  return { init, enter, setRoster, stageCovered, leave, clearRunning, runningCount: () => runningAgents.size, isAgentRunning: (id) => agentLive(id), notify, warnIfStationLacksKey, settleNotifs, waitingNotifKeys, seenSession, storedWaits, settleStoredWait, flashSave, refreshSave: () => refreshSaveDurability(), offerPreservedSaves, openAgent, refreshCrew: () => crewTick(), openArcade, toggleTerm, openTerm, focusProvider, showTerm, showAgent, notifsMarkRead, notifsClear, badges, openDesk, closeTerm, rerender, invalidate, refreshBoard: refreshBoardLive, pokeQuests, setTheme, getTheme, setLook, lookNow, lookOptions, repaintAutonomy, initiativeLabel, refreshSystems, toggleFamily, familyOf, registerWindow, h, motionRestState, reseatToasts };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = { visibleTerminalRect, clampTerminalSize };

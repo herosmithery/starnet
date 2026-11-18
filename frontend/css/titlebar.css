@@ -81,3 +81,12 @@ body.sn-chrome .refit-overlay { top: var(--sn-tb-h); }
 body.sn-chrome.sn-fs #sn-titlebar { display: none; }
 body.sn-chrome.sn-fs .screen { top: 0; }
 body.sn-chrome.sn-fs .refit-overlay { top: 0; }
+
+/* LITE GLASS (2026-11-18): set on <html> by world.js while the floor is STRAINED (a slow machine — see noteStrain). The
+   frosted-glass backdrop blur over a canvas that redraws makes the compositor re-blur every panel on every floor draw; on a
+   2015 Intel Iris that alone held the RECRUITMENT BAY's scroll at ~13 fps (p90 241 ms); with no blur, 40 fps (p90 18 ms).
+   The panels are already 82% opaque, so they stay legible; the floor clears the class once it is fast again. */
+html.sn-lite-glass *, html.sn-lite-glass *::before, html.sn-lite-glass *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}

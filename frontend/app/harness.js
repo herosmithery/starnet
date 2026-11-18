@@ -1345,7 +1345,10 @@ const Harness = (() => {
     const model = getModel(), provider = getProv(), key = getKey(provider), reasoningEffort = getReasoningEffort(provider);
     // Codex authenticates by an OAuth token (server-side); the desktop build keeps the key in the
     // sidecar's env (keychain). Neither needs a key sent from here.
-    if (providerNeedsKey(provider) && !DESKTOP && !DEVMODE && !key) throw new Error('no API key set');
+    // A key the SIDECAR already holds (its env — e.g. OPENROUTER_API_KEY — or keychain; /api/providers says
+    // credential.present) is enough: the run route falls back to it when the page sends none. Refusing here made a
+    // browser station with an env key fail every run with 'no API key set' while SETTINGS showed the provider verified.
+    if (providerNeedsKey(provider) && !DESKTOP && !DEVMODE && !key && !hasStoredCredential(provider)) throw new Error('no API key set');
     if (!model) throw new Error('no model selected');
 
     /* TRANSPORT PROVENANCE (night N2, 2026-10-15 — found by the GH#116 lane). A transport loss is known by WHERE an
