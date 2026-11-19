@@ -50,7 +50,8 @@ Tip: run VOLT's daily scans on a free model, and switch to Claude Code for writi
 
 ## 3. Import VOLT
 
-**MARKETPLACE → ⇪ IMPORT AGENT → PICK FOLDER…** and choose:
+With StarNet started by `crew/start-free.sh`, **CREW → RECRUIT → ⇪ IMPORT AGENT** lists VOLT's folder as
+**OPENCLAW — DEFAULT**: click it, then **RECRUIT** (done on 2026-11-19). Otherwise use **PICK FOLDER…** and choose:
 
 ```
 ~/Projects/starnet/crew/rankedirl-hq/workspace

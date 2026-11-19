@@ -9,4 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -d node_modules ] || npm ci --ignore-scripts
+# Point IMPORT AGENT's OpenClaw detection at the VOLT crew folder, so VOLT shows up as a one-click import
+# (no native folder dialog needed). Override by exporting OPENCLAW_STATE_DIR yourself.
+export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$PWD/crew/rankedirl-hq}"
 exec env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN node sidecar/index.js
