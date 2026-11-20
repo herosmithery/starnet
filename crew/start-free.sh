@@ -12,4 +12,9 @@ cd "$(dirname "$0")/.."
 # Point IMPORT AGENT's OpenClaw detection at the VOLT crew folder, so VOLT shows up as a one-click import
 # (no native folder dialog needed). Override by exporting OPENCLAW_STATE_DIR yourself.
 export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$PWD/crew/rankedirl-hq}"
-exec env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN node sidecar/index.js
+# Keep the Mac awake while StarNet runs, so scheduled routines and Telegram keep working overnight.
+# caffeinate -i blocks idle sleep; -s also blocks system sleep while on power. Closing the lid still sleeps
+# a MacBook unless it is on power with an external display. Set STARNET_ALLOW_SLEEP=1 to skip this.
+KEEP_AWAKE=()
+if [ "${STARNET_ALLOW_SLEEP:-0}" != "1" ] && command -v caffeinate >/dev/null 2>&1; then KEEP_AWAKE=(caffeinate -is); fi
+exec env -u ANTHROPIC_API_KEY -u ANTHROPIC_BASE_URL -u ANTHROPIC_AUTH_TOKEN ${KEEP_AWAKE[@]+"${KEEP_AWAKE[@]}"} node sidecar/index.js
