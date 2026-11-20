@@ -419,7 +419,16 @@
         let own = null;
         if (m.chatType === 'dm') {
           own = ownerDecision(m.userId, m);
-          if (!own.ok) { acknowledge(); return; }   // a non-owner DM never reaches the run host
+          if (!own.ok) {   // a non-owner DM never reaches the run host
+            // Say so on the console (never the text or code): a silent drop made a mistyped or expired /pair
+            // indistinguishable from a bot that receives nothing at all.
+            try {
+              const looksLikePair = /^\/?pair\s+\S/i.test(String(m.text || ''));
+              console.log('[' + name + '] refused a DM from ' + (owner ? 'an account that is not the paired owner' : 'an unpaired account')
+                + (looksLikePair && !owner ? ' — pairing code did not match the current one or has expired' : ''));
+            } catch (_) {}
+            acknowledge(); return;
+          }
           // Enrollment is an authentication exchange, not an agent instruction. Route its acknowledgement through
           // the hub as a direct reply: it gets the same durable receipt and delivery as a model answer while the
           // pairing code stays out of transcript/history. A repeated /pair from the owner is consumed too, so a
@@ -588,6 +597,7 @@
           if (isFatal(e)) { onStatus && onStatus({ state: 'error', detail: (e && e.message) || 'fatal' }); break; }
           // token conflict (Telegram 409): stay alive on a slow cadence and self-heal when the other poller stops.
           if (isConflict(e)) {
+            if (process.env.STARNET_DEBUG_POLL === '1') { try { console.log('[' + name + '] poll: CONFLICT — ' + ((e && e.message) || 'another poller holds this token')); } catch (_) {} }
             statusConflict((e && e.message) || 'token conflict');
             await sleep(conflictRetryMs);
             attempt = 0;   // a conflict is its own ladder — the transient backoff restarts clean afterwards
@@ -602,6 +612,9 @@
         attempt = 0;
         statusUp();
         const fetched = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.updates) ? raw.updates : []);
+        if (process.env.STARNET_DEBUG_POLL === '1') {
+          try { console.log('[' + name + '] poll: ' + fetched.length + ' update(s), offset ' + offset + (fetched.length ? ', kinds ' + fetched.map(u => Object.keys(u || {}).filter(k => k !== 'update_id').join('+')).join(',') : '')); } catch (_) {}
+        }
         const intakeFailed = intake(fetched);
         if (intakeFailed && !stopped) {
           statusDown('durable intake failed: ' + ((intakeFailed && intakeFailed.message) || 'storage error'), 'intake');

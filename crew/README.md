@@ -70,7 +70,19 @@ The preview should say **VOLT** with sources SOUL.md, AGENTS.md, USER.md, MEMORY
 
 The token stays on your machine (OS keychain). Never paste it into chat or commit it.
 
-## 5. Put VOLT on a schedule
+Connected on 2026-11-19: the bot is **@Starnettingbot** (StarNet prints the name at startup), and its replies come from PULSAR.
+
+If pairing doesn't work:
+- **Send `/pair` while StarNet is running and its panel shows connected.** Anything sent while StarNet was stopped or reconnecting is thrown away on purpose.
+- **Each PAIR OWNER click replaces the previous code**, and a code lasts 10 minutes.
+- **A clock icon next to your message means Telegram hasn't sent it yet.** Use https://web.telegram.org on this Mac instead.
+- **StarNet logs every message it refuses:** `[telegram] refused a DM from …`. If that line never appears, your message never reached the bot.
+
+## 5. Send routine results to Telegram
+
+Routines can only send to a chat StarNet has seen. After pairing, send the bot one normal message (e.g. `status`). Then set each routine's delivery to that chat: in the routine's settings, or with `deliver: "all"` through `/api/cron/update`. Done for all 5 routines on 2026-11-19, and a test run of VOLT's daily routine arrived in Telegram.
+
+## 6. Put VOLT on a schedule
 
 In VOLT's panel → schedules (cron), add:
 

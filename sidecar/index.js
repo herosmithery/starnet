@@ -11848,6 +11848,8 @@ function startTelegram(token, model, agentCfg) {
     .then(me => {
       if (me && me.ok && me.username) stationBotUsername = String(me.username);
       if (me && me.ok && me.name) stationBotName = String(me.name);
+      // Name the bot on the console: "send /pair to your bot" is ambiguous when the owner has several bots.
+      if (me && me.ok && me.username) console.log('  · telegram bot is @' + stationBotUsername + ' — DM this bot to pair or chat');
       if (me && me.ok && typeof me.seesAllGroupMessages === 'boolean') stationBotSeesAll = me.seesAllGroupMessages;
     })
     .catch(() => {});
